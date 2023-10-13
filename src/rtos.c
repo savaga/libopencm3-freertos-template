@@ -6,6 +6,13 @@
 
 void vApplicationIdleHook( void );
 
+#if ( configSUPPORT_STATIC_ALLOCATION == 0)
+void vApplicationMallocFailedHook(void);
+void vApplicationMallocFailedHook(void) {
+    while(1);
+}
+#endif
+
 #if ( configSUPPORT_STATIC_ALLOCATION == 1 )
 void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer,
                             StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize )

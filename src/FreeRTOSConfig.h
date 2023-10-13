@@ -118,8 +118,13 @@ standard names. */
 #define xPortPendSVHandler pend_sv_handler
 #define xPortSysTickHandler sys_tick_handler
 
-#define configSUPPORT_STATIC_ALLOCATION 1
-#define configSUPPORT_DYNAMIC_ALLOCATION 0
+#if defined(FREERTOS_DYNAMIC_MEMMANG)
+    #define configSUPPORT_STATIC_ALLOCATION 0
+    #define configSUPPORT_DYNAMIC_ALLOCATION 1
+#else
+    #define configSUPPORT_STATIC_ALLOCATION 1
+    #define configSUPPORT_DYNAMIC_ALLOCATION 0
+#endif
 
 #ifdef __cplusplus
 }
