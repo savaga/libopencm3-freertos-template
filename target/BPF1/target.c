@@ -17,12 +17,12 @@ static void clock_setup(void)
     rcc_periph_clock_enable(RCC_GPIOC);
 
 	/* Enable clocks for GPIO port A (for GPIO_USART1_TX) and USART1. */
-	rcc_periph_clock_enable(RCC_AFIO);
-	rcc_periph_clock_enable(RCC_USART1);
+	//rcc_periph_clock_enable(RCC_AFIO);
+	//rcc_periph_clock_enable(RCC_USART1);
 
     /* Enable clocks for GPIO port A (for GPIO_USART2_TX) and USART2. */
-	rcc_periph_clock_enable(RCC_AFIO);
-	rcc_periph_clock_enable(RCC_USART2);
+	//rcc_periph_clock_enable(RCC_AFIO);
+	//rcc_periph_clock_enable(RCC_USART2);
 
 }
 
@@ -34,8 +34,8 @@ static void gpio_setup(void)
 	gpio_set(GPIOC, GPIO13); // OFF
 
     /* Setup GPIOB11 for button*/
-    gpio_set(GPIOB, GPIO11);
-    gpio_set_mode(GPIOB, GPIO_MODE_INPUT, GPIO_CNF_INPUT_PULL_UPDOWN, GPIO11);
+    //gpio_set(GPIOB, GPIO11);
+    //gpio_set_mode(GPIOB, GPIO_MODE_INPUT, GPIO_CNF_INPUT_PULL_UPDOWN, GPIO11);
 }
 
 void target_init(void) {

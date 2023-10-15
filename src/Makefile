@@ -9,12 +9,13 @@ endif
 
 BUILD_DIR = bin/$(TARGET)
 
+DRIVER_DIR = ../driver
 SHARED_DIR = ../lib
 TARGET_DIR = ../target/$(TARGET)
 FREERTOS_DIR = ../rtos
 FREERTOS_FILES = tasks.c timers.c list.c queue.c croutine.c event_groups.c stream_buffer.c port.c
 
-CFILES = main.c rtos.c cdc.c 
+CFILES = main.c rtos.c cdc.c
 CFILES += $(FREERTOS_FILES)
 #AFILES += api-asm.S
 
@@ -30,8 +31,8 @@ else
 FREERTOS_MEMMANG_DIR =
 endif
 
-VPATH += $(SHARED_DIR) $(FREERTOS_DIR) $(FREERTOS_PORT_DIR) $(TARGET_DIR) $(FREERTOS_MEMMANG_DIR)
-INCLUDES += $(patsubst %,-I%, . $(SHARED_DIR) $(FREERTOS_DIR)/include $(FREERTOS_PORT_DIR) $(TARGET_DIR))
+VPATH += $(SHARED_DIR) $(FREERTOS_DIR) $(FREERTOS_PORT_DIR) $(TARGET_DIR) $(FREERTOS_MEMMANG_DIR) $(DRIVER_DIR)
+INCLUDES += $(patsubst %,-I%, . $(SHARED_DIR) $(FREERTOS_DIR)/include $(FREERTOS_PORT_DIR) $(TARGET_DIR) $(DRIVER_DIR)/include)
 OPENCM3_DIR=../libopencm3
 TARGET_DEFS += -DTARGET=$(TARGET) -DDEVICE=$(DEVICE)
 

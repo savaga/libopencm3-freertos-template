@@ -8,4 +8,4 @@ FREERTOS_PORT = ARM_CM3
 
 TARGET_DEFS =
 
-CFILES += target.c
+CFILES += target.c usb.c

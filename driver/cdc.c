@@ -18,13 +18,10 @@
  */
 
 #include <stdlib.h>
-#include <libopencm3/cm3/nvic.h>
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/usb/usbd.h>
 #include <libopencm3/usb/cdc.h>
-#include <libopencm3/cm3/scb.h>
-#include <libopencm3/usb/dwc/otg_fs.h>
 
 #include <FreeRTOS.h>
 #include <task.h>
@@ -179,7 +176,7 @@ static const struct usb_config_descriptor config = {
 static const char * usb_strings[] = {
 	"Black Sphere Technologies",
 	"CDC-ACM Demo",
-	"DEMO",
+	".serial",
 };
 
 /* Buffer to be used for control requests. */
@@ -200,8 +197,7 @@ static enum usbd_request_return_codes cdcacm_control_request(usbd_device *usbd_d
 		 * even though it's optional in the CDC spec, and we don't
 		 * advertise it in the ACM functional descriptor.
 		 */
-        uint16_t rtsdtr = req->wValue;  // DTR is bit 0, RTS is bit 1
-        g_usbd_is_connected = rtsdtr & 1;
+        g_usbd_is_connected = req->wValue & 1; // DTR is bit 0, RTS is bit 1
 		return USBD_REQ_HANDLED;
 		}
 	case USB_CDC_REQ_SET_LINE_CODING:
@@ -246,13 +242,6 @@ bool cdcacm_is_connected(void) {
     return g_usbd_is_connected;
 }
 
-void otg_fs_isr(void)
-{
-    if (g_usbd_dev) {
-        usbd_poll(g_usbd_dev);
-    }
-}
-
 static void prvUSBTask( void *pvParameters ) {
     (void) pvParameters;
 
@@ -264,26 +253,20 @@ static void prvUSBTask( void *pvParameters ) {
     }
 }
 
+void cdcacm_poll(void) {
+    usbd_poll(g_usbd_dev);
+}
+
 void cdcacm_init(void)
 {
-	rcc_clock_setup_pll(&rcc_hse_25mhz_3v3[RCC_CLOCK_3V3_84MHZ]);
+    g_usbd_dev = usbd_init((usbd_driver*)usb_driver, &dev, &config,
+            usb_strings, 3,
+            usbd_control_buffer, sizeof(usbd_control_buffer));
 
-	rcc_periph_clock_enable(RCC_GPIOA);
-	rcc_periph_clock_enable(RCC_OTGFS);
+    usb_init_hook();
 
-	gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO11 | GPIO12);
-	gpio_set_af(GPIOA, GPIO_AF10, GPIO11 | GPIO12);
+    usbd_register_set_config_callback(g_usbd_dev, cdcacm_set_config);
 
-	g_usbd_dev = usbd_init(&otgfs_usb_driver, &dev, &config,
-			usb_strings, 3,
-			usbd_control_buffer, sizeof(usbd_control_buffer));
-
-    OTG_FS_GCCFG |= OTG_GCCFG_NOVBUSSENS | OTG_GCCFG_PWRDWN;
-    OTG_FS_GCCFG &= ~(OTG_GCCFG_VBUSBSEN | OTG_GCCFG_VBUSASEN);
-
-	usbd_register_set_config_callback(g_usbd_dev, cdcacm_set_config);
-
-    nvic_enable_irq(NVIC_OTG_FS_IRQ);
 #if defined(FREERTOS_DYNAMIC_MEMMANG)
     xTaskCreate( prvUSBTask, "USB", USB_TASK_STACK_SIZE, NULL,
                         USB_TASK_PRIORITY, NULL);
@@ -292,3 +275,4 @@ void cdcacm_init(void)
                         USB_TASK_PRIORITY, &uxUsbStackBuffer[0], &xUsbTCBBuffer);
 #endif
 }
+
