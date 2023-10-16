@@ -4,3 +4,6 @@
 [submodule "libopencm3"]
 	path = libopencm3
 	url = https://github.com/libopencm3/libopencm3.git
+[submodule "lib/lwrb"]
+	path = lib/lwrb
+	url = git@github.com:MaJerle/lwrb.git

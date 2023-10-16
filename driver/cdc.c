@@ -26,6 +26,8 @@
 #include <FreeRTOS.h>
 #include <task.h>
 
+#include <lwrb/lwrb.h>
+
 #include "cdc.h"
 
 #define USB_TASK_PRIORITY           ( tskIDLE_PRIORITY + 1 )
@@ -39,6 +41,15 @@ static StackType_t uxUsbStackBuffer[USB_TASK_STACK_SIZE];
 static usbd_device *g_usbd_dev = NULL;
 static bool g_usbd_is_connected = false;
 
+static lwrb_t rx_ring_buffer;
+static lwrb_t tx_ring_buffer;
+#if defined(FREERTOS_DYNAMIC_MEMMANG)
+static uint8_t* rx_ring_data;
+static uint8_t* tx_ring_data;
+#else
+static uint8_t rx_ring_data[CDC_RX_RING_SIZE];
+static uint8_t tx_ring_data[CDC_TX_RING_SIZE];
+#endif
 static const struct usb_device_descriptor dev = {
 	.bLength = USB_DT_DEVICE_SIZE,
 	.bDescriptorType = USB_DT_DEVICE,
@@ -212,30 +223,30 @@ static enum usbd_request_return_codes cdcacm_control_request(usbd_device *usbd_d
 
 static void cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
 {
-	(void)ep;
+    (void)ep;
 
-	char buf[64];
-	int len = usbd_ep_read_packet(usbd_dev, 0x01, buf, 64);
+    char buf[64];
+    int len = usbd_ep_read_packet(usbd_dev, 0x01, buf, 64);
 
-	if (len) {
-		while (usbd_ep_write_packet(usbd_dev, 0x82, buf, len) == 0);
-	}
+    if (len) {
+        lwrb_write(&rx_ring_buffer, buf, len);
+    }
 }
 
 static void cdcacm_set_config(usbd_device *usbd_dev, uint16_t wValue)
 {
-	(void)wValue;
+    (void)wValue;
 
-	usbd_ep_setup(usbd_dev, 0x01, USB_ENDPOINT_ATTR_BULK, 64,
-			cdcacm_data_rx_cb);
-	usbd_ep_setup(usbd_dev, 0x82, USB_ENDPOINT_ATTR_BULK, 64, NULL);
-	usbd_ep_setup(usbd_dev, 0x83, USB_ENDPOINT_ATTR_INTERRUPT, 16, NULL);
+    usbd_ep_setup(usbd_dev, 0x01, USB_ENDPOINT_ATTR_BULK, 64,
+            cdcacm_data_rx_cb);
+    usbd_ep_setup(usbd_dev, 0x82, USB_ENDPOINT_ATTR_BULK, 64, NULL);
+    usbd_ep_setup(usbd_dev, 0x83, USB_ENDPOINT_ATTR_INTERRUPT, 16, NULL);
 
-	usbd_register_control_callback(
-				usbd_dev,
-				USB_REQ_TYPE_CLASS | USB_REQ_TYPE_INTERFACE,
-				USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT,
-				cdcacm_control_request);
+    usbd_register_control_callback(
+                usbd_dev,
+                USB_REQ_TYPE_CLASS | USB_REQ_TYPE_INTERFACE,
+                USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT,
+                cdcacm_control_request);
 }
 
 bool cdcacm_is_connected(void) {
@@ -248,7 +259,7 @@ static void prvUSBTask( void *pvParameters ) {
     for(;;) {
         vTaskDelay( ( TickType_t ) 500 );
         if (g_usbd_is_connected) {
-            usbd_ep_write_packet(g_usbd_dev, 0x82, "Hello\r\n", 7);
+            lwrb_write(&tx_ring_buffer, "Hello\r\n", 7);
         }
     }
 }
@@ -257,8 +268,37 @@ void cdcacm_poll(void) {
     usbd_poll(g_usbd_dev);
 }
 
+static void cdcacm_sof_callback(void) {
+    static bool usb_serial_need_empty_tx = false;
+
+    if (!g_usbd_is_connected) {
+        return;
+    }
+
+    size_t len = lwrb_get_linear_block_read_length(&tx_ring_buffer);
+    if (len == 0 && !usb_serial_need_empty_tx) {
+        return;
+    }
+    if (len > 64) {
+        len = 64;
+    }
+
+    uint8_t* linear_buf = lwrb_get_linear_block_read_address(&tx_ring_buffer);
+    uint16_t sent = usbd_ep_write_packet(g_usbd_dev, 0x82, linear_buf, len);
+
+    usb_serial_need_empty_tx = (sent == 64);
+    lwrb_skip(&tx_ring_buffer, sent);
+}
+
 void cdcacm_init(void)
 {
+#if defined(FREERTOS_DYNAMIC_MEMMANG)
+    rx_ring_data = pvPortMalloc(CDC_RX_RING_SIZE);
+    tx_ring_data = pvPortMalloc(CDC_TX_RING_SIZE);
+#endif
+    lwrb_init(&rx_ring_buffer, rx_ring_data, CDC_RX_RING_SIZE);
+    lwrb_init(&tx_ring_buffer, tx_ring_data, CDC_TX_RING_SIZE);
+
     g_usbd_dev = usbd_init((usbd_driver*)usb_driver, &dev, &config,
             usb_strings, 3,
             usbd_control_buffer, sizeof(usbd_control_buffer));
@@ -266,6 +306,7 @@ void cdcacm_init(void)
     usb_init_hook();
 
     usbd_register_set_config_callback(g_usbd_dev, cdcacm_set_config);
+    usbd_register_sof_callback(g_usbd_dev, cdcacm_sof_callback);
 
 #if defined(FREERTOS_DYNAMIC_MEMMANG)
     xTaskCreate( prvUSBTask, "USB", USB_TASK_STACK_SIZE, NULL,
