@@ -30,8 +30,8 @@ static void clock_setup(void)
 static void gpio_setup(void)
 {
     /* Setup GPIO13 (in GPIO port C) for LED use. */
-    gpio_mode_setup(GPIOC, GPIO_MODE_OUTPUT,
-              GPIO_PUPD_NONE, GPIO13);
+    gpio_mode_setup(LED_PORT, GPIO_MODE_OUTPUT,
+              GPIO_PUPD_NONE, LED_PIN);
 
     /* Setup GPIOB11 for button*/
     //gpio_mode_setup(GPIOB, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, GPIO12);

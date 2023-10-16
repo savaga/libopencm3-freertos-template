@@ -29,9 +29,9 @@ static void clock_setup(void)
 static void gpio_setup(void)
 {
 	/* Setup GPIO13 (in GPIO port C) for LED use. */
-	gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_50_MHZ,
-		      GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
-	gpio_set(GPIOC, GPIO13); // OFF
+	gpio_set_mode(LED_PORT, GPIO_MODE_OUTPUT_50_MHZ,
+		      GPIO_CNF_OUTPUT_PUSHPULL, LED_PIN);
+	gpio_set(LED_PORT, LED_PIN); // OFF
 
     /* Setup GPIOB11 for button*/
     //gpio_set(GPIOB, GPIO11);

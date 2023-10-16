@@ -28,11 +28,11 @@ static void prvLEDTask( void *pvParameters ) {
 
     for(;;) {
         vTaskDelay( ( TickType_t ) 500 );
-        //gpio_toggle(GPIOC, GPIO13);
+        //gpio_toggle(LED_PORT, LED_PIN);
         if (cdcacm_is_connected()) {
-            gpio_clear(GPIOC, GPIO13);
+            gpio_clear(LED_PORT, LED_PIN);
         } else {
-            gpio_set(GPIOC, GPIO13);
+            gpio_set(LED_PORT, LED_PIN);
         }
     }
 }

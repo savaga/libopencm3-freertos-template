@@ -110,8 +110,9 @@ LDLIBS += -Wl,--start-group -lc -lgcc -lnosys -Wl,--end-group -lm
 %: s.%
 %: SCCS/s.%
 
-all: $(PROJECT).elf $(PROJECT).bin
+all: $(PROJECT).elf $(PROJECT).bin $(PROJECT).hex
 flash: $(PROJECT).flash
+dfu: $(PROJECT).dfu
 
 # error if not using linker script generator
 ifeq (,$(DEVICE))
@@ -148,6 +149,10 @@ $(PROJECT).elf: $(OBJS) $(LDSCRIPT) $(LIBDEPS)
 	@printf "  OBJCOPY\t$@\n"
 	$(Q)$(OBJCOPY) -O binary  $< $@
 
+%.hex: %.elf
+	@printf "  OBJCOPY\t$@\n"
+	$(Q)$(OBJCOPY) -O ihex  $< $@
+
 %.lss: %.elf
 	$(OBJDUMP) -h -S $< > $@
 
@@ -168,6 +173,11 @@ else
 		-c "program $(realpath $(*).elf) verify reset exit" \
 		$(NULL)
 endif
+
+%.dfu: %.bin
+	@printf "  DFU FLASH\t$<\n"
+	dfu-util -a 0 -s 0x08000000:leave -D $<
+
 
 clean:
 	rm -rf $(BUILD_DIR) $(GENERATED_BINS)
